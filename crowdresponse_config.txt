@@ -1,0 +1,330 @@
+//--------------------------------------------------------------------------------
+//
+// CrowdStrike, Inc. Copyright (c) 2014.  All rights reserved.
+//
+// Written by Robin Keir. Sr. Research Engineer, CrowdStrike.
+//
+//--------------------------------------------------------------------------------
+//
+// Example config file for use with CrowdResponse tool.
+//
+// Example usage: CrowdResponse -v -i config.txt -o out.xml
+//
+// Copyright (c) 2015. CrowdStrike, Inc.
+//
+// PLEASE TEST THIS CONFIG FILE IN A TEST ENVIRONMENT BEFORE DEPLOYING TO
+// PRODUCTION SYSTEMS
+//
+//--------------------------------------------------------------------------------
+//
+// Main options
+//
+// This is just an example.
+//
+// Uncomment the @main line below to activate the main application parameters
+// instead of having to supply them first on the command line. Note that you can't
+// supply main option -i (path to config file) here in the config file since that
+// could lead to recursive file inclusion.
+//
+//  -c             Use low CPU priority (idle) to lessen load on the system
+//  -e             Indent output XML for readability. Default Off
+//  -f <name>      HTTP form item value name for -u. Default is file from -s
+//  -i <file>      Read configuration from file
+//  -k             Keep the output XML/CAB file when -x is used
+//  -n <name>      HTTP form item name for -u. Default is "filename"
+//  -o <file>      Write output to specified file (overwrite)
+//  -t             Strict SSL certificate adherence. Default is ignore bad certs
+//  -u <url>       Posts output file (-o) to HTTP service specified by URL
+//  -v             Verbose output
+//  -x             Self destruct. Delete this EXE and output file when app exits
+//  -z             Compress output to a CAB archive and delete original XML
+//
+// In addition to regular system environment variables the naming of the output
+// file used with -o and the input configuration file used with -i also
+// understands the following:
+//
+//  %ad%    The application's directory path (includes trailing back-slash)
+//  %ip%    Primary IPv4 IP address
+//  %nm%    NetBIOS computer name
+//  %tm%    Current UTC date/time
+//  %ve%    Application product version
+
+@main -v -q 300 -o "%ip%,%nm%,%tm%.xml"
+
+
+//--------------------------------------------------------------------------------
+//
+// Listing of executables in Program Files, Windows and temp and downloads
+//
+// -e <filter>   - Path exclusion regex filter pattern
+// -f <mask>     - File name mask. Default is "*.*"
+// -i <filter>   - Path inclusion regex filter pattern
+// -p <depth>    - Recursion depth (0 = top level only, 1 = 1 level down etc)
+// -s            - Recursive listing
+// -t <fileops>  - Comma separated file operations
+// -x            - Only process Windows executable (PE) files
+// -z <size>     - Don't hash files greater than this size in megabytes
+// <dir>         - Directory to start listing from
+
+@dirlist "%ProgramFiles%" -s -t cam,certs,md5,properties,sha256 -z 100 -i "\.(exe|dll)$"
+@dirlist "%ProgramFiles(x86)%" -s -t cam,certs,md5,properties,sha256 -z 100 -i "\.(exe|dll)$"
+@dirlist "%windir%" -t cam,certs,md5,properties,sha256 -z 100 -i "\.(exe|dll|sys)$"
+@dirlist "%windir%\system32" -s -t cam,certs,md5,properties,sha256 -p 2 -z 100 -i "\.(exe|dll|sys)$"
+@dirlist "%systemdrive%" -s -t cam,certs,md5,properties,sha256 -z 100 -i "\\temp.*\.(exe|dll)$"
+@dirlist "%systemdrive%\users\" -s -t cam,certs,md5,properties,sha256 -z 100 -i "\\downloads\\.*\.(exe|dll)$"
+@dirlist "%systemdrive%\Documents and Settings\" -s -t cam,certs,md5,properties,sha256 -z 100 -i "\\downloads\\.*\.(exe|dll)$"
+
+//--------------------------------------------------------------------------------
+//
+// Drivers listing
+//
+// -c Verify digital signature of service modules
+// -h Do SHA256 hashes
+// -m Do MD5 hashes
+// -q Perform "quick" hash of only the 1st 512 bytes of the file
+// -r Display application resource information
+// -t Display file create, modified and accessed times
+// -z <size> Don't hash files greater than this size in megabytes
+
+@drivers -t all
+
+//--------------------------------------------------------------------------------
+//
+// Process handles listing
+//
+// -p <PID>      - Process ID to dump from. Default is all processes
+
+@handles
+
+//--------------------------------------------------------------------------------
+//
+// Malware/hacking
+//
+//  -s            - "Sticky keys" detection
+
+@mal -a dllinpath,dllsvchost,sticky -t all
+
+//--------------------------------------------------------------------------------
+//
+// Extract Windows Prefetch information. Determine directory automatically
+//
+//  -s            - Recursive listing
+//  -t            - Translate \dev\harddiskvolume paths to logical drive path
+//  -v            - Force treating pf files as if from Vista or above OS
+//  -x            - Force treating pf files as if from XP or below OS
+//  <dir>         - Directory to start in. Default "%systemroot%\Prefetch"
+ 
+@prefetch -t
+
+//--------------------------------------------------------------------------------
+//
+// List all processes
+//
+// -d            - Obtain process command line
+// -e            - Obtain PE file information for each process executable
+// -i            - Check for process thread injection
+// -n            - For -e, don't dump function names for imports and exports
+// -o            - Enumerate loaded modules for each process
+// -s            - For -e, use nested format resource information
+// -t <fileops>  - Comma separated file operations
+// -v            - Determine and process svchost DLLs. Must be used with -d
+// -x            - For -e, don't dump full resource information
+// -z <size>     - Don't hash files greater than this size in megabytes
+
+@pslist -d -e -i -o -t all -v -z 100
+
+//--------------------------------------------------------------------------------
+//
+// Extract strings from the memory of running processes
+//
+// -a            - Only extract ASCII strings
+// -c <n>        - Use built-in character set number
+// -i <regex>    - Only include strings matching regex
+// -k <n>        - XOR every byte read from the file with <n>
+// -m <text>     - Text containing characters that MUST be present in a string
+// -n <n>        - Minimum length of a string (default 4)
+// -p <id>       - Process id to examine. Default is all processes
+// -r <n>        - Ignore strings with 'n' or more repeated characters
+// -u            - Only extract Unicode strings
+// -v            - Show extra details (hex memory offset)
+// -x <n>        - Maximum length of a string (default 1024, max 1024)
+
+@psstrings -n 5 -v 
+
+//--------------------------------------------------------------------------------
+//
+// Extract registry key and value information
+//
+//  -d            - Nested output format
+//  -s            - Recursive dump
+//  <reg key>     - Registry key to start dump from
+
+@regdump "HKLM\SYSTEM\CurrentControlSet\services" -s
+@regdump "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options" -s
+
+//--------------------------------------------------------------------------------
+//
+// Registry files
+//
+// Examines the following registry locations and attempts to determine if any of
+// them reference files.
+//
+// -c            - Verify and display digital signature information
+// -h            - Do SHA256 hashes
+// -m            - Do MD5 hashes
+// -q            - Perform "quick" hash of only the 1st 512 bytes of the file
+// -r            - Display application resource information
+// -s            - Recursive dump
+// -t            - Display file create, modified and accessed times
+// -z <size>     - Don't hash files greater than this size in megabytes
+// <reg key>     - Registry key to start dump from
+
+@regfile "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -s -t cam,certs,md5,properties,sha256
+@regfile "HKCU\SOFTWARE\Microsoft\Windows\CurrentVersion\Run" -s -t cam,certs,md5,properties,sha256
+@regfile "HKLM\SOFTWARE\Microsoft\Windows NT\CurrentVersion\Image File Execution Options" -s -t cam,certs,md5,properties,sha256
+
+//--------------------------------------------------------------------------------
+//
+// App Compat Cache with SHA256 and MD5 hashes
+//
+//  -h            - Do SHA256 hashes
+//  -m            - Do MD5 hashes
+ 
+@shim -t all
+
+//--------------------------------------------------------------------------------
+//
+// Superfetch dump
+//
+//  -3            - Treat files in <dir> as if they came from a 32 bit OS
+//  -6            - Treat files in <dir> as if they came from a 64 bit OS
+//  -s            - Recursive listing
+//  -t            - Translate \dev\harddiskvolume paths to logical drive path
+//  <dir>         - Optional directory of Superfetch db files to process
+ 
+@superfetch -t 
+
+//--------------------------------------------------------------------------------
+//
+// YARA
+//
+//  -a            - Scan active processes memory
+//  -b            - Scan active processes executable files
+//  -c            - Strict SSL cert adherence for -u. Default is ignore bad certs
+//  -d <depth>    - Target path recursion depth
+//                  (0 = top level only, 1 = 1 level down etc)
+//  -e <filter>   - Target file path exclusion regex filter pattern
+//  -f <mask>     - Target file name mask. Default is "*.*"
+//  -h            - Only show positive hits
+//  -i <filter>   - Target file path inclusion regex filter pattern
+//  -m <mask>     - YARA rule file name mask. Default is "*.yar"
+//  -n <filter>   - YARA rule file path inclusion regex filter pattern
+//  -o            - Scan all loaded module files of active processes
+//  -p <pid>      - Single process ID to scan
+//  -r            - Recurse into YARA rules directory
+//  -s            - Recurse into target directories
+//  -t <dir>      - Starting target files directory
+//  -u <url>      - Download and run YARA file from URL
+//  -v            - Enable additional informational output
+//  -x <filter>   - YARA rule file path exclusion regex filter pattern
+//  -y <dir>      - YARA rules directory
+
+// Use built-in (to this config) rules shown below against running process
+// binaries (-b) and memory (-a)
+
+@yara -a -b -v -o -h
+@yara -t "%systemdrive%\ProgramFiles" -h -d 2 -s -f *.* -i "\.(exe|dll)$"
+@yara -t "%systemdrive%\ProgramFiles(x86)" -h -d 2 -s -f *.* -i "\.(exe|dll)$"
+@yara -t "%windir%" -h -f *.* -i "\.(exe|dll|sys)$"
+@yara -t "%windir%\system32" -h -d 2 -s -f *.* -i "\.(exe|dll|sys)$"
+@yara -t "%systemdrive%" -h -s -f *.* -i "\\temp.*\.(exe|dll)$"
+@yara -t "%systemdrive%" -h -f *.* -i "\.(exe|dll)$"
+@yara -t "%HOMEPATH%" -h -s -d 3 -f *.* -i "\.(exe|dll)$"
+@yara -t "%systemdrive%\inetpub" -h -s -f *.* -i "\.(asp|aspx)$"
+
+//--------------------------------------------------------------------------------
+
+
+// ---------- Yara rules ----------
+
+[<SECTION:yara>]
+
+rule Derusbi_DeepPanda : Deep Panda Derusbi
+{
+	strings:
+    	$a = "DUDE_AM_I_SHARP"
+        $b = "c0d0so0"
+        $c = "BASTARD_&&_BITCHES"
+        $d = "WHO_A_R_E_YOU?"
+        $cookie = "pgv_pvid=%016I64d"
+        $f = "3a 24 3a 2c 3a 34 3a 3c 3a 44 3a 4c 3a 54 3a 5c 3a 64 3a 6c 3a 74 3a 7c 3a"
+        $g = "3c 24 3c 2c 3c 34 3c 3c 3c 44 3c 4c 3c 54 3c 5c 3c 64 3c 6c 3c 74 3c 7c 3c"
+        $h = "3d 24 3d 2c 3d 34 3d 3c 3d 44 3d 4c 3d 54 3d 5c 3d 64 3d 6c 3d 74 3d 7c 3d"
+        $i = "3e 24 3e 2c 3e 34 3e 3c 3e 44 3e 4c 3e 54 3e 5c 3e 64 3e 6c 3e 74 3e 7c 3e"
+        $j = "3f 24 3f 2c 3f 34 3f 3c 3f 44 3f 4c 3f 54 3f 5c 3f 64 3f 6c 3f 74 3f 7c 3f"
+        $k = "30 24 30 2c 30 34 30 3c 30 44 30 4c 30 54 30 5c 30 64 30 6c 30 74 30 7c 30"
+        $l = "31 24 31 2c 31 34 31 3c 31 44 31 4c 31 54 31 5c 31 64 31 6c 31 74 31 7c 31"
+        $m = "32 24 32 2c 32 34 32 3c 32 44 32 4c 32 54 32 5c 32 64 32 6c 32 74 32 7c 32"
+        $n = "33 24 33 2c 33 34 33 3c 33 44 33 4c 33 54 33 5c 33 64 33 6c 33 74 33 7c 33"
+        $o = "34 24 34 2c 34 34 34 3c 34 44 34 4c 34 54 34 5c 34 64 34 6c 34 74 34 7c 34"
+        $p = "35 24 35 2c 35 34 35 3c 35 44 35 4c 35 54 35 5c 35 64 35 6c 35 74 35 7c 35"
+        $q = "36 24 36 2c 36 34 36 3c 36 44 36 4c 36 54 36 5c 36 64 36 6c 36 74 36 7c 36"
+        $r = "37 24 37 2c 37 34 37 3c 37 44 37 4c 37 54 37 5c 37 64 37 6c 37 74 37 7c 37"
+        $s = "38 24 38 2c 38 34 38 3c 38 44 38 4c 38 54 38 5c 38 64 38 6c 38 74 38 7c 38"
+        $t = "39 24 39 2c 39 34 39 3c 39 44 39 4c 39 54 39 5c 39 64 39 6c 39 74 39 7c 39"
+        $u = "Ace123dx!@#x"
+        $v = "Le12xv10"
+        $pcc1 = "PCC_MISC"
+        $pcc2 = "PCC_CMD"
+        $pcc3 = "PCC_SOCK"
+        $pcc4 = "PCC_SUPER_SOCK"
+        $pcc5 = "PCC_PROXY"
+	$isapi  = "ISAPI_CONNECT"
+        $bdsock = "BD_SOCK"
+        $bddns  = "BD_DNS"        
+        
+    condition:
+    	$a or $cookie or $b or $c or $d or $u or $v or 2 of ($pcc1,$pcc2,$pcc3,$pcc4,$pcc5,$isapi,$bdsock,$bddns) or 2 of ($f,$g,$h,$i,$j,$k,$l,$m,$n,$o,$p,$q,$r,$s,$t)
+}
+
+rule CrowdStrike_CSIT_14004_01 : loader backdoor bouncer 
+{ 
+	meta: 
+		description = "Deep Panda ASP.NET Webshell" 
+		last_modified = "2013-02-03" 
+		version = "1.0" 
+		report = "CSIT-14004"
+		in_the_wild = true 
+		copyright = "CrowdStrike, Inc" 
+		actor = "DEEP PANDA" 
+	strings: 
+		$cookie = "Cookies[\"zWiz\"]" 
+		$cp = "IndexOf(\"es-DN\")" 
+		$keep_alive = "[\"Keep-Alive\"] == \"320\"" 
+	condition: 
+		any of them 
+}
+
+rule CrowdStrike_CSIT_14004_02 : loader backdoor bouncer
+{
+   meta:
+	description = "Deep Panda Compiled ASP.NET <http://ASP.NET> Webshell"
+	last_modified = "2014-04-25"
+	version = "1.0"
+	report = "CSIT-14004"
+	in_the_wild = true
+	copyright = "CrowdStrike, Inc"
+	actor = "DEEP PANDA"
+   strings:
+	$cookie = "zWiz\x00" wide
+	$cp = "es-DN" wide
+
+	$enum_fs1 = "File system: {0}" wide
+	$enum_fs2 = "Available: {0} bytes" wide
+	$enum_fs3 = "Total space: {0} bytes" wide
+	$enum_fs4 = "Total size: {0} bytes" wide
+   condition:
+	($cookie and $cp) or all of ($enum*)
+}
+
+[</SECTION>]
